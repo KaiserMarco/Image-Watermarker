@@ -21,8 +21,6 @@ struct Message {
 
 string EXIT = "EXIT", COLLECTOR = "COLLECTOR", WORKER = "WORKER", EMITTER = "EMITTER";
 
-condition_variable cvEmitter, cvWorker, cvCollector;
-
 class Timer {
 	typedef time_point<system_clock> clock;
 
@@ -43,38 +41,38 @@ class Timer {
 		}
 };
 
-void sendMessage( string receiver, struct Message message, queue<Message>* queue, mutex* mux, int index ) {
+void sendMessage( string receiver, struct Message message, queue<Message>* queue, mutex* mux, condition_variable* cv ) {
 	if(receiver.compare( EMITTER ) == 0) {
 		unique_lock<mutex> lockEmitterMessage( *mux );
 
 		queue->push( message );
-		cvEmitter.notify_one();
+		cv->notify_one();
 
 		lockEmitterMessage.unlock();
 	} else if(receiver.compare( WORKER ) == 0) {
 		unique_lock<mutex> lockWorkerMessage( *mux );
 
 		queue->push( message );
-		cvWorker.notify_one();
+		cv->notify_one();
 
 		lockWorkerMessage.unlock();
 	} else if(receiver.compare( COLLECTOR ) == 0) {
 		unique_lock<mutex> lockCollectorMessage( *mux );
 
 		queue->push( message );
-		cvCollector.notify_one();
+		cv->notify_one();
 
 		lockCollectorMessage.unlock();
 	}
 }
 
-void collect( queue<Message>* queue, mutex* collectorMutex ) {
+void collect( queue<Message>* queue, mutex* collectorMutex, condition_variable* cvCollector ) {
 	struct Message message;
 
 	while(true) {
 		unique_lock<mutex> lockCollectorMessage( *collectorMutex );
 
-		cvCollector.wait( lockCollectorMessage, [=]{ return !queue->empty(); } );
+		cvCollector->wait( lockCollectorMessage, [=]{ return !queue->empty(); } );
 
 		message = queue->front();
 		queue->pop();
@@ -101,14 +99,16 @@ void collect( queue<Message>* queue, mutex* collectorMutex ) {
 	cout << "[COLLECTOR]: STA TERMINANDO..." << endl;
 }
 
-void work( int index, CImg<imageType>& stamp, queue<Message>* workerQueue, queue<Message>* collectorQueue, mutex* workerMutex, mutex* collectorMutex ) {
+void work( int index, CImg<imageType>& stamp, queue<Message>* workerQueue, queue<Message>* collectorQueue,
+		   mutex* workerMutex, mutex* collectorMutex, condition_variable* cvWorker, condition_variable* cvCollector ) {
+
 	struct Message message;
 	CImg<imageType>::iterator itR, itG, itB, itS;
 
 	while(true) {
 		unique_lock<mutex> lockWorkerMessage( *workerMutex );
 
-		cvWorker.wait( lockWorkerMessage, [=]{ return !workerQueue->empty(); } );
+		cvWorker->wait( lockWorkerMessage, [=]{ return !workerQueue->empty(); } );
 
 		message = workerQueue->front();
 		workerQueue->pop();
@@ -145,20 +145,25 @@ void work( int index, CImg<imageType>& stamp, queue<Message>* workerQueue, queue
 			}
 		}
 
-		sendMessage( COLLECTOR, message, collectorQueue, collectorMutex, 0 );
+		sendMessage( COLLECTOR, message, collectorQueue, collectorMutex, cvCollector );
 	}
 }
 
-void emit( int nWorkers, CImg<imageType>& stamp, queue<Message>* emitterQueue, queue<Message>* collectorQueue, mutex* emitterMutex, mutex* collectorMutex) {
+void emit( int nWorkers, CImg<imageType>& stamp, queue<Message>* emitterQueue, queue<Message>* collectorQueue,
+		   mutex* emitterMutex, mutex* collectorMutex, condition_variable* cvEmitter, condition_variable* cvCollector ) {
+
 	vector<thread> threads;
 	vector<queue<Message>*> workersQueues;
 
 	vector<mutex*> workersMutexes;
 
+	vector<condition_variable*> cvWorkers;
+
 	for(int i = 0; i < nWorkers; i++) {
 		workersQueues.push_back( new queue<Message>() );
 		workersMutexes.push_back( new mutex() );
-		threads.emplace_back( work, i, ref( stamp ), workersQueues[i], collectorQueue, workersMutexes[i], collectorMutex );
+		cvWorkers.push_back( new condition_variable() );
+		threads.emplace_back( work, i, ref( stamp ), workersQueues[i], collectorQueue, workersMutexes[i], collectorMutex, cvWorkers[i], cvCollector );
 		cout << "[EMITTER]: WORKER[" << i << "] GENERATO" << endl;
 	}
 
@@ -166,7 +171,7 @@ void emit( int nWorkers, CImg<imageType>& stamp, queue<Message>* emitterQueue, q
 	for(int index = 0; index < numeric_limits<int>::max(); index++) {
 		unique_lock<mutex> lockEmitterMessage( *emitterMutex );
 
-		cvEmitter.wait( lockEmitterMessage, [=]{ return !emitterQueue->empty(); } );
+		cvEmitter->wait( lockEmitterMessage, [=]{ return !emitterQueue->empty(); } );
 
 		message = emitterQueue->front();
 		emitterQueue->pop();
@@ -179,14 +184,15 @@ void emit( int nWorkers, CImg<imageType>& stamp, queue<Message>* emitterQueue, q
 		}
 
 		cout << "[EMITTER]: INVIO MESSAGGIO AGLI WORKER" << endl;
-		sendMessage( WORKER, message, ref( workersQueues[index % nWorkers] ), workersMutexes[index % nWorkers], index % nWorkers );
+		int idx = index % nWorkers;
+		sendMessage( WORKER, message, ref( workersQueues[idx] ), workersMutexes[idx], cvWorkers[idx] );
 	}
 
 	// comunicate to all the threads that the images to be processed are finished
 	cout << "[EMITTER]: TERMINE ELABORAZIONE IMMAGINI" << endl;
 	message.name = EXIT;
 	for(int i = 0; i < nWorkers; i++) {
-		sendMessage( WORKER, message, ref( workersQueues[i] ), workersMutexes[i], i );
+		sendMessage( WORKER, message, ref( workersQueues[i] ), workersMutexes[i], cvWorkers[i] );
 	}
 
 	for(thread & t : threads) {
@@ -194,7 +200,7 @@ void emit( int nWorkers, CImg<imageType>& stamp, queue<Message>* emitterQueue, q
 	}
 
 	// comunicate to the collector that there are no more images to save
-	sendMessage( COLLECTOR, message, collectorQueue, collectorMutex, 0 );
+	sendMessage( COLLECTOR, message, collectorQueue, collectorMutex, cvCollector );
 
 	cout << "[EMITTER]: STA TERMINANDO..." << endl;
 }
@@ -203,8 +209,11 @@ int main( int argc, char* argv[] ) {
 	queue<Message> *emitterQueue = new queue<Message>();
 	queue<Message> *collectorQueue = new queue<Message>();
 
-	mutex* emitterMutex = new mutex();
-	mutex* collectorMutex = new mutex();
+	mutex *emitterMutex = new mutex();
+	mutex *collectorMutex = new mutex();
+
+	condition_variable *cvEmitter = new condition_variable();
+	condition_variable *cvCollector = new condition_variable();
 
 	int dimW = atoi( argv[2] ), dimH = atoi( argv[3] );
 
@@ -239,9 +248,9 @@ int main( int argc, char* argv[] ) {
 
 	timeN.startTime();
 
-	thread collector( collect, collectorQueue, collectorMutex );
+	thread collector( collect, collectorQueue, collectorMutex, cvCollector );
 
-	thread emitter( emit, atoi( argv[1] ), ref( stamp ), emitterQueue, collectorQueue, emitterMutex, collectorMutex );
+	thread emitter( emit, atoi( argv[1] ), ref( stamp ), emitterQueue, collectorQueue, emitterMutex, collectorMutex, cvEmitter, cvCollector );
 
 	// takes images from the directory and send them to the emitter queue
 	int mexSended = 0;
@@ -252,7 +261,7 @@ int main( int argc, char* argv[] ) {
 				message.image = new CImg<imageType>( imageName.c_str() );
 				message.name = i->path().filename().string();
 
-				sendMessage( EMITTER, message, emitterQueue, emitterMutex, 0 );
+				sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
 
 				mexSended++;
 			}
@@ -262,22 +271,23 @@ int main( int argc, char* argv[] ) {
 	// sends messages of "EXIT" strings to the workers when #workers > #files
 	message.name = EXIT;
 	for(; mexSended < atoi( argv[1] ); mexSended++) {
-		sendMessage( EMITTER, message, emitterQueue, emitterMutex, 0 );
+		sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
 	}
 
 	// comunicates to the emitter that there are no more images
 	message.image = new CImg<imageType>();
-	sendMessage( EMITTER, message, emitterQueue, emitterMutex, 0 );
+	sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
 
 	emitter.join();
 
-	free( emitterQueue );
-	free( emitterMutex );
-
 	collector.join();
 
+	free( emitterQueue );
+	free( emitterMutex );
+	free( cvEmitter );
 	free( collectorQueue );
 	free( collectorMutex );
+	free( cvCollector );
 
 	timeN.stopTime();
 
