@@ -80,7 +80,7 @@ void collect( queue<Message>* queue, mutex* collectorMutex, condition_variable* 
 		lockCollectorMessage.unlock();
 
 		if(message.name.compare( EXIT ) == 0) {
-			free( message.image );
+			delete message.image;
 			break;
 		}
 
@@ -91,8 +91,8 @@ void collect( queue<Message>* queue, mutex* collectorMutex, condition_variable* 
 		directory[path.size()] = '\0';
 		message.image->save( directory );
 
-		free( message.image );
-		free( directory );
+		delete message.image;
+		delete directory;
 	}
 
 
@@ -160,7 +160,7 @@ void emit( int nWorkers, CImg<imageType>* stamp,
 		workersQueues.push_back( new queue<Message>() );
 		workersMutexes.push_back( new mutex() );
 		cvWorkers.push_back( new condition_variable() );
-		threads.emplace_back( work, i, stamp, workersQueues[i], collectorQueue, workersMutexes[i], collectorMutex, cvWorkers[i], cvCollector );
+		threads.push_back( thread( work, i, stamp, workersQueues[i], collectorQueue, workersMutexes[i], collectorMutex, cvWorkers[i], cvCollector ) );
 		cout << "[EMITTER]: WORKER[" << i << "] GENERATO" << endl;
 	}
 
@@ -250,7 +250,7 @@ int main( int argc, char* argv[] ) {
 					}
 				}
 
-				// sends messages of "EXIT" strings to the workers when #workers > #files
+				// sends "EXIT" messages to the workers when #workers > #files
 				message.name = EXIT;
 				for(; mexSended < atoi( argv[1] ); mexSended++) {
 					sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
@@ -265,19 +265,20 @@ int main( int argc, char* argv[] ) {
 				collector.join();
 
 				for(int j = 0; j < workersQueues.size(); j++) {
-					free( workersQueues[j] );
-					free( workersMutexes[j] );
-					free( cvWorkers[j] );
+					delete workersQueues[j];
+					delete workersMutexes[j];
+					delete cvWorkers[j];
 				}
 
-				free( emitterQueue );
-				free( emitterMutex );
-				free( cvEmitter );
-				free( collectorQueue );
-				free( collectorMutex );
-				free( cvCollector );
+				delete emitterQueue;
+				delete emitterMutex;
+				delete cvEmitter;
 
-				free( stamp );
+				delete collectorQueue;
+				delete collectorMutex;
+				delete cvCollector;
+
+				delete stamp;
 				break;
 			}
 		}
@@ -331,13 +332,13 @@ int main( int argc, char* argv[] ) {
 							copy( path.begin(), path.end(), directory );
 							directory[path.size()] = '\0';
 							image->save( directory );
-							free( image );
-							free( directory );
+							delete image;
+							delete directory;
 						}
 					}
 				}
 
-				free( stamp );
+				delete stamp;
 				break;
 			}
 		}
