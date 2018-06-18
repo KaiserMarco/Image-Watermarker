@@ -215,31 +215,6 @@ int main( int argc, char* argv[] ) {
 	condition_variable *cvEmitter = new condition_variable();
 	condition_variable *cvCollector = new condition_variable();
 
-	int dimW = atoi( argv[2] ), dimH = atoi( argv[3] );
-
-	// creates images and save them in a directory
-	imageType black[] = { 0, 0, 0 }, white[] = { 255, 255, 255 }, gray[] = { 127, 127, 127 }, color[] = { 255, 30, 130 };
-	CImg<imageType> image1( dimW, dimH, 1, 3, { 255, 30, 130 } ), image2( dimW, dimH, 1, 3, 255 ),
-					image3( dimW, dimH, 1, 3, 255 ), image4( dimW, dimH, 1, 3, { 255, 30, 130 } ),
-					stampImage( dimW, dimH, 1, 3, 255 );
-	image1.draw_text( dimW/6, dimH/8, "Sono", black, white, 1, 103 ); image2.draw_text( dimW/6, dimH/8, "Ciao", black, white, 1, 103 );
-	image3.draw_text( dimW/6, dimH/8, "Vedo", black, white, 1, 103 ); image4.draw_text( dimW/6, dimH/8, "Ecco", black, color, 1, 103 );
-	stampImage.draw_rectangle( dimW/8, dimH/2, dimW*3/4, dimH*3/4, black );
-	//stampImage.draw_text( dimW/6, dimH/2, "Marco", black, white, 1, 103 );
-	//image1.save( "./Images/image1.jpg" ); image2.save( "./Images/image2.jpg" ); image3.save( "./Images/image3.jpg" );
-	//image1.save( "./Images/image1.jpg" ); image4.save( "./Images/image4.jpg" ); stampImage.save( "./StampImage/stampImage.jpg" );
-
-	// takes the stamp image
-	CImg<imageType>* stamp;
-	for(auto i = directory_iterator( argv[6] ); i != directory_iterator(); i++) {
-		if(!is_directory( i->path() )) {
-			string imageName = (string) argv[6] + "/" + i->path().filename().string();
-			if(strcmp( i->path().filename().c_str(), argv[7] ) == 0) {
-				stamp = new CImg<imageType>( imageName.c_str() );
-			}
-		}
-	}
-
 	Timer timeN, timeS;
 
 	struct Message message;
@@ -248,46 +223,58 @@ int main( int argc, char* argv[] ) {
 
 	timeN.startTime();
 
-	thread collector( collect, collectorQueue, collectorMutex, cvCollector );
+	// takes stamp and images from the directories and send them to the emitter queue
+	for(auto i = directory_iterator( argv[6] ); i != directory_iterator(); i++) {
+		if(!is_directory( i->path() )) {
+			string imageName = (string) argv[6] + "/" + i->path().filename().string();
+			if(strcmp( i->path().filename().c_str(), argv[7] ) == 0) {
+				CImg<imageType>* stamp = new CImg<imageType>( imageName.c_str() );
 
-	thread emitter( emit, atoi( argv[1] ), stamp, emitterQueue, collectorQueue, emitterMutex, collectorMutex, cvEmitter, cvCollector );
+				thread collector( collect, collectorQueue, collectorMutex, cvCollector );
 
-	// takes images from the directory and send them to the emitter queue
-	int mexSended = 0;
-	for(int j = 0; j < atoi( argv[4] ); j++) {
-		for(auto i = directory_iterator( argv[5] ); i != directory_iterator(); i++) {
-			if(!is_directory( i->path() )) {
-				string imageName = (string) argv[5] + "/" + i->path().filename().string();
-				message.image = new CImg<imageType>( imageName.c_str() );
-				message.name = i->path().filename().string();
+				thread emitter( emit, atoi( argv[1] ), stamp, emitterQueue, collectorQueue, emitterMutex, collectorMutex, cvEmitter, cvCollector );
 
+				int mexSended = 0;
+				for(int j = 0; j < atoi( argv[4] ); j++) {
+					for(auto i = directory_iterator( argv[5] ); i != directory_iterator(); i++) {
+						if(!is_directory( i->path() )) {
+							string imageName = (string) argv[5] + "/" + i->path().filename().string();
+							message.image = new CImg<imageType>( imageName.c_str() );
+							message.name = i->path().filename().string();
+
+							sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
+
+							mexSended++;
+						}
+					}
+				}
+
+				// sends messages of "EXIT" strings to the workers when #workers > #files
+				message.name = EXIT;
+				for(; mexSended < atoi( argv[1] ); mexSended++) {
+					sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
+				}
+
+				// comunicates to the emitter that there are no more images
+				message.image = new CImg<imageType>();
 				sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
 
-				mexSended++;
+				emitter.join();
+
+				collector.join();
+
+				free( emitterQueue );
+				free( emitterMutex );
+				free( cvEmitter );
+				free( collectorQueue );
+				free( collectorMutex );
+				free( cvCollector );
+
+				free( stamp );
+				break;
 			}
 		}
 	}
-
-	// sends messages of "EXIT" strings to the workers when #workers > #files
-	message.name = EXIT;
-	for(; mexSended < atoi( argv[1] ); mexSended++) {
-		sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
-	}
-
-	// comunicates to the emitter that there are no more images
-	message.image = new CImg<imageType>();
-	sendMessage( EMITTER, message, emitterQueue, emitterMutex, cvEmitter );
-
-	emitter.join();
-
-	collector.join();
-
-	free( emitterQueue );
-	free( emitterMutex );
-	free( cvEmitter );
-	free( collectorQueue );
-	free( collectorMutex );
-	free( cvCollector );
 
 	timeN.stopTime();
 
@@ -297,50 +284,59 @@ int main( int argc, char* argv[] ) {
 
     timeS.startTime();
 
-	CImg<imageType>::iterator itR, itG, itB, itS;
-	for(int j = 0; j < atoi( argv[4] ); j++) {
-		for(auto i = directory_iterator( argv[5] ); i != directory_iterator(); i++) {
-			if(!is_directory( i->path() )) {
-				string imageName = (string) argv[5] + "/" + i->path().filename().string();
-				CImg<imageType> *image = new CImg<imageType>( imageName.c_str() );
-				int color, offset = 0, numPixels = image->width() * image->height();
-				for(itS = stamp->begin(); itS < stamp->end(); ++itS, ++offset) {
-					if(*itS == 0) {
-						itR = image->begin();
-						advance( itR, offset );
-						color += *itR;
+	for(auto i = directory_iterator( argv[6] ); i != directory_iterator(); i++) {
+		if(!is_directory( i->path() )) {
+			string imageName = (string) argv[6] + "/" + i->path().filename().string();
+			if(strcmp( i->path().filename().c_str(), argv[7] ) == 0) {
+				CImg<imageType>* stamp = new CImg<imageType>( imageName.c_str() );
 
-						itG = image->begin();
-						advance( itG, numPixels + offset );
-						color += *itG;
+				CImg<imageType>::iterator itR, itG, itB, itS;
+				for(int j = 0; j < atoi( argv[4] ); j++) {
+					for(auto i = directory_iterator( argv[5] ); i != directory_iterator(); i++) {
+						if(!is_directory( i->path() )) {
+							string imageName = (string) argv[5] + "/" + i->path().filename().string();
+							CImg<imageType> *image = new CImg<imageType>( imageName.c_str() );
+							int color, offset = 0, numPixels = image->width() * image->height();
+							for(itS = stamp->begin(); itS < stamp->end(); ++itS, ++offset) {
+								if(*itS == 0) {
+									itR = image->begin();
+									advance( itR, offset );
+									color += *itR;
 
-						itB = image->begin();
-						advance( itB, numPixels * 2 + offset );
-						color += *itB;
+									itG = image->begin();
+									advance( itG, numPixels + offset );
+									color += *itG;
 
-						color /= 6;
+									itB = image->begin();
+									advance( itB, numPixels * 2 + offset );
+									color += *itB;
 
-						*itR = color;
-						*itG = color;
-						*itB = color;
+									color /= 6;
+
+									*itR = color;
+									*itG = color;
+									*itB = color;
+								}
+							}
+
+							string path = "./ImageResults/" + i->path().filename().string();
+							char* directory = new char[path.size() + 1];
+							copy( path.begin(), path.end(), directory );
+							directory[path.size()] = '\0';
+							image->save( directory );
+							free( image );
+							free( directory );
+						}
 					}
 				}
 
-				string path = "./ImageResults/" + i->path().filename().string();
-				char* directory = new char[path.size() + 1];
-				copy( path.begin(), path.end(), directory );
-				directory[path.size()] = '\0';
-				image->save( directory );
-				free( image );
-				free( directory );
+				free( stamp );
+				break;
 			}
 		}
 	}
 
-
 	timeS.stopTime();
-
-	free( stamp );
 
 	cout << "[MAIN]: TERMINATA PARTE SEQUENZIALE" << endl;
 
