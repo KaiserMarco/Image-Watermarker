@@ -99,7 +99,7 @@ void collect( queue<Message>* queue, mutex* collectorMutex, condition_variable* 
 	cout << "[COLLECTOR]: STA TERMINANDO..." << endl;
 }
 
-void work( int index, CImg<imageType>& stamp, queue<Message>* workerQueue, queue<Message>* collectorQueue,
+void work( int index, CImg<imageType>* stamp, queue<Message>* workerQueue, queue<Message>* collectorQueue,
 		   mutex* workerMutex, mutex* collectorMutex, condition_variable* cvWorker, condition_variable* cvCollector ) {
 
 	struct Message message;
@@ -123,7 +123,7 @@ void work( int index, CImg<imageType>& stamp, queue<Message>* workerQueue, queue
 
 		CImg<imageType>* image = message.image;
 		int color, offset = 0, numPixels = image->width() * image->height();
-		for(itS = stamp.begin(); itS < stamp.end(); ++itS, ++offset) {
+		for(itS = stamp->begin(); itS < stamp->end(); ++itS, ++offset) {
 			if(*itS == 0) {
 				itR = image->begin();
 				advance( itR, offset );
@@ -149,7 +149,7 @@ void work( int index, CImg<imageType>& stamp, queue<Message>* workerQueue, queue
 	}
 }
 
-void emit( int nWorkers, CImg<imageType>& stamp, queue<Message>* emitterQueue, queue<Message>* collectorQueue,
+void emit( int nWorkers, CImg<imageType>* stamp, queue<Message>* emitterQueue, queue<Message>* collectorQueue,
 		   mutex* emitterMutex, mutex* collectorMutex, condition_variable* cvEmitter, condition_variable* cvCollector ) {
 
 	vector<thread> threads;
@@ -163,7 +163,7 @@ void emit( int nWorkers, CImg<imageType>& stamp, queue<Message>* emitterQueue, q
 		workersQueues.push_back( new queue<Message>() );
 		workersMutexes.push_back( new mutex() );
 		cvWorkers.push_back( new condition_variable() );
-		threads.emplace_back( work, i, ref( stamp ), workersQueues[i], collectorQueue, workersMutexes[i], collectorMutex, cvWorkers[i], cvCollector );
+		threads.emplace_back( work, i, stamp, workersQueues[i], collectorQueue, workersMutexes[i], collectorMutex, cvWorkers[i], cvCollector );
 		cout << "[EMITTER]: WORKER[" << i << "] GENERATO" << endl;
 	}
 
@@ -230,12 +230,12 @@ int main( int argc, char* argv[] ) {
 	//image1.save( "./Images/image1.jpg" ); image4.save( "./Images/image4.jpg" ); stampImage.save( "./StampImage/stampImage.jpg" );
 
 	// takes the stamp image
-	CImg<imageType> stamp;
+	CImg<imageType>* stamp;
 	for(auto i = directory_iterator( argv[6] ); i != directory_iterator(); i++) {
 		if(!is_directory( i->path() )) {
 			string imageName = (string) argv[6] + "/" + i->path().filename().string();
 			if(strcmp( i->path().filename().c_str(), argv[7] ) == 0) {
-				stamp.assign( imageName.c_str() );
+				stamp = new CImg<imageType>( imageName.c_str() );
 			}
 		}
 	}
@@ -250,7 +250,7 @@ int main( int argc, char* argv[] ) {
 
 	thread collector( collect, collectorQueue, collectorMutex, cvCollector );
 
-	thread emitter( emit, atoi( argv[1] ), ref( stamp ), emitterQueue, collectorQueue, emitterMutex, collectorMutex, cvEmitter, cvCollector );
+	thread emitter( emit, atoi( argv[1] ), stamp, emitterQueue, collectorQueue, emitterMutex, collectorMutex, cvEmitter, cvCollector );
 
 	// takes images from the directory and send them to the emitter queue
 	int mexSended = 0;
@@ -304,7 +304,7 @@ int main( int argc, char* argv[] ) {
 				string imageName = (string) argv[5] + "/" + i->path().filename().string();
 				CImg<imageType> *image = new CImg<imageType>( imageName.c_str() );
 				int color, offset = 0, numPixels = image->width() * image->height();
-				for(itS = stamp.begin(); itS < stamp.end(); ++itS, ++offset) {
+				for(itS = stamp->begin(); itS < stamp->end(); ++itS, ++offset) {
 					if(*itS == 0) {
 						itR = image->begin();
 						advance( itR, offset );
@@ -339,6 +339,8 @@ int main( int argc, char* argv[] ) {
 
 
 	timeS.stopTime();
+
+	free( stamp );
 
 	cout << "[MAIN]: TERMINATA PARTE SEQUENZIALE" << endl;
 
