@@ -149,15 +149,12 @@ void work( int index, CImg<imageType>* stamp, queue<Message>* workerQueue, queue
 	}
 }
 
-void emit( int nWorkers, CImg<imageType>* stamp, queue<Message>* emitterQueue, queue<Message>* collectorQueue,
-		   mutex* emitterMutex, mutex* collectorMutex, condition_variable* cvEmitter, condition_variable* cvCollector ) {
+void emit( int nWorkers, CImg<imageType>* stamp,
+		   queue<Message>* emitterQueue, vector<queue<Message>*> workersQueues, queue<Message>* collectorQueue,
+		   mutex* emitterMutex, vector<mutex*> workersMutexes, mutex* collectorMutex,
+		   condition_variable* cvEmitter, vector<condition_variable*> cvWorkers, condition_variable* cvCollector ) {
 
 	vector<thread> threads;
-	vector<queue<Message>*> workersQueues;
-
-	vector<mutex*> workersMutexes;
-
-	vector<condition_variable*> cvWorkers;
 
 	for(int i = 0; i < nWorkers; i++) {
 		workersQueues.push_back( new queue<Message>() );
@@ -206,15 +203,6 @@ void emit( int nWorkers, CImg<imageType>* stamp, queue<Message>* emitterQueue, q
 }
 
 int main( int argc, char* argv[] ) {
-	queue<Message> *emitterQueue = new queue<Message>();
-	queue<Message> *collectorQueue = new queue<Message>();
-
-	mutex *emitterMutex = new mutex();
-	mutex *collectorMutex = new mutex();
-
-	condition_variable *cvEmitter = new condition_variable();
-	condition_variable *cvCollector = new condition_variable();
-
 	Timer timeN, timeS;
 
 	struct Message message;
@@ -222,6 +210,18 @@ int main( int argc, char* argv[] ) {
 	cout << "[MAIN]: INIZIATA PARTE PARALLELA" << endl;
 
 	timeN.startTime();
+
+	queue<Message> *emitterQueue = new queue<Message>();
+	vector<queue<Message>*> workersQueues;
+	queue<Message> *collectorQueue = new queue<Message>();
+
+	mutex *emitterMutex = new mutex();
+	vector<mutex*> workersMutexes;
+	mutex *collectorMutex = new mutex();
+
+	condition_variable *cvEmitter = new condition_variable();
+	vector<condition_variable*> cvWorkers;
+	condition_variable *cvCollector = new condition_variable();
 
 	// takes stamp and images from the directories and send them to the emitter queue
 	for(auto i = directory_iterator( argv[6] ); i != directory_iterator(); i++) {
@@ -232,7 +232,8 @@ int main( int argc, char* argv[] ) {
 
 				thread collector( collect, collectorQueue, collectorMutex, cvCollector );
 
-				thread emitter( emit, atoi( argv[1] ), stamp, emitterQueue, collectorQueue, emitterMutex, collectorMutex, cvEmitter, cvCollector );
+				thread emitter( emit, atoi( argv[1] ), stamp, emitterQueue, workersQueues, collectorQueue,
+								emitterMutex, workersMutexes, collectorMutex, cvEmitter, cvWorkers, cvCollector );
 
 				int mexSended = 0;
 				for(int j = 0; j < atoi( argv[4] ); j++) {
@@ -262,6 +263,12 @@ int main( int argc, char* argv[] ) {
 				emitter.join();
 
 				collector.join();
+
+				for(int j = 0; j < workersQueues.size(); j++) {
+					free( workersQueues[j] );
+					free( workersMutexes[j] );
+					free( cvWorkers[j] );
+				}
 
 				free( emitterQueue );
 				free( emitterMutex );
