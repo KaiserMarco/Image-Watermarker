@@ -272,10 +272,12 @@ int main( int argc, char* argv[] ) {
 	emitter.join();
 
 	free( emitterQueue );
+	free( emitterMutex );
 
 	collector.join();
 
 	free( collectorQueue );
+	free( collectorMutex );
 
 	timeN.stopTime();
 
