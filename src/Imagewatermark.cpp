@@ -19,7 +19,8 @@ struct Message {
 	string name;
 };
 
-string EXIT = "EXIT", COLLECTOR = "COLLECTOR", WORKER = "WORKER", EMITTER = "EMITTER";
+string EXIT_EMITTER = "EXIT EMITTER", EXIT_WORKER = "EXIT WORKER", EXIT_COLLECTOR = "EXIT COLLECTOR",
+		EMITTER = "EMITTER", WORKER = "WORKER", COLLECTOR = "COLLECTOR";
 
 class Timer {
 	typedef time_point<system_clock> clock;
@@ -77,8 +78,7 @@ void collect( queue<Message>* queue, mutex* collectorMutex, condition_variable* 
 
 		lockCollectorMessage.unlock();
 
-		if(message.name.compare( EXIT ) == 0) {
-			delete message.image;
+		if(message.name.compare( EXIT_COLLECTOR ) == 0) {
 			break;
 		}
 
@@ -113,7 +113,7 @@ void work( int index, CImg<imageType>* stamp, queue<Message>* workerQueue, queue
 		lockWorkerMessage.unlock();
 
 		cout << "[WORKER " << index << "]: LETTURA MESSAGGIO" << endl;
-		if(message.name.compare( EXIT ) == 0) {
+		if(message.name.compare( EXIT_WORKER ) == 0) {
 			cout << "[WORKER " << index << "]: STA TERMINANDO..." << endl;
 			return;
 		}
@@ -157,7 +157,7 @@ void emit( int nWorkers, CImg<imageType>* stamp,
 		workersQueues.push_back( new queue<Message>() );
 		workersMutexes.push_back( new mutex() );
 		cvWorkers.push_back( new condition_variable() );
-		threads.push_back( thread( work, i, stamp, workersQueues[i], collectorQueue, workersMutexes[i], collectorMutex, cvWorkers[i], cvCollector ) );
+		threads.emplace_back( work, i, stamp, workersQueues[i], collectorQueue, workersMutexes[i], collectorMutex, cvWorkers[i], cvCollector );
 		cout << "[EMITTER]: WORKER[" << i << "] GENERATO" << endl;
 	}
 
@@ -172,22 +172,21 @@ void emit( int nWorkers, CImg<imageType>* stamp,
 		lockEmitterMessage.unlock();
 
 		cout << "[EMITTER]: LETTURA MESSAGGIO" << endl;
-		if(message.image->is_empty()) {
+		if(message.name.compare( EXIT_EMITTER ) == 0) {
 			break;
 		}
 
 		cout << "[EMITTER]: INVIO MESSAGGIO AGLI WORKER" << endl;
 		int idx = index % nWorkers;
-		sendMessage( WORKER, ref( message ), ref( workersQueues[idx] ), workersMutexes[idx], cvWorkers[idx] );
+		sendMessage( WORKER, ref( message ), workersQueues[idx], workersMutexes[idx], cvWorkers[idx] );
 	}
 
 	// comunicate to all the threads that the images to be processed are finished
 	cout << "[EMITTER]: TERMINE ELABORAZIONE IMMAGINI" << endl;
 	struct Message message;
-	message.image = new CImg<imageType>();
-	message.name = EXIT;
+	message.name = EXIT_WORKER;
 	for(int i = 0; i < nWorkers; i++) {
-		sendMessage( WORKER, ref( message ), ref( workersQueues[i] ), workersMutexes[i], cvWorkers[i] );
+		sendMessage( WORKER, ref( message ), workersQueues[i], workersMutexes[i], cvWorkers[i] );
 	}
 
 	for(thread & t : threads) {
@@ -195,6 +194,7 @@ void emit( int nWorkers, CImg<imageType>* stamp,
 	}
 
 	// comunicate to the collector that there are no more images to save
+	message.name = EXIT_COLLECTOR;
 	sendMessage( COLLECTOR, ref( message ), collectorQueue, collectorMutex, cvCollector );
 
 	cout << "[EMITTER]: STA TERMINANDO..." << endl;
@@ -202,8 +202,6 @@ void emit( int nWorkers, CImg<imageType>* stamp,
 
 int main( int argc, char* argv[] ) {
 	Timer timeN, timeS;
-
-	struct Message message;
 
 	cout << "[MAIN]: INIZIATA PARTE PARALLELA" << endl;
 
@@ -233,29 +231,31 @@ int main( int argc, char* argv[] ) {
 				thread emitter( emit, atoi( argv[1] ), stamp, emitterQueue, workersQueues, collectorQueue,
 								emitterMutex, workersMutexes, collectorMutex, cvEmitter, cvWorkers, cvCollector );
 
-				int mexSended = 0;
+				int mexSent = 0;
 				for(int j = 0; j < atoi( argv[4] ); j++) {
 					for(auto i = directory_iterator( argv[5] ); i != directory_iterator(); i++) {
 						if(!is_directory( i->path() )) {
 							string imageName = (string) argv[5] + "/" + i->path().filename().string();
+							struct Message message;
 							message.image = new CImg<imageType>( imageName.c_str() );
 							message.name = i->path().filename().string();
 
 							sendMessage( EMITTER, ref( message ), emitterQueue, emitterMutex, cvEmitter );
 
-							mexSended++;
+							mexSent++;
 						}
 					}
 				}
 
 				// sends "EXIT" messages to the workers when #workers > #files
-				message.name = EXIT;
-				for(; mexSended < atoi( argv[1] ); mexSended++) {
+				struct Message message;
+				message.name = EXIT_WORKER;
+				for(; mexSent < atoi( argv[1] ); mexSent++) {
 					sendMessage( EMITTER, ref( message ), emitterQueue, emitterMutex, cvEmitter );
 				}
 
 				// comunicates to the emitter that there are no more images
-				message.image = new CImg<imageType>();
+				message.name = EXIT_EMITTER;
 				sendMessage( EMITTER, ref( message ), emitterQueue, emitterMutex, cvEmitter );
 
 				emitter.join();
