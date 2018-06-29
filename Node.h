@@ -9,8 +9,8 @@
 using namespace std;
 using namespace cimg_library;
 
-namespace iwm
-{
+namespace iwm {
+
 	typedef unsigned char imageType;
 
 	class Node {
@@ -25,71 +25,33 @@ namespace iwm
 			thread _thread;
 
 		public:
-			Node() {
-				input_connections  = 0;
-				output_connections = 0;
-			}
+			Node();
 
-			Message* receiveMessage( int index ) {
-				return input_queues[index]->receiveMessage();
-			}
+			Message* receiveMessage( int index );
 
-			void sendMessage( Message* message, int index ) {
-				output_queues[index]->sendMessage( message );
-			}
+			void sendMessage( Message* message, int index );
 
-			void sendBroadcast( int receivers, Message* message ) {
-				for(int i = 0; i < receivers; i++) {
-					sendMessage( message, i );
-				}
-			}
+			void sendBroadcast( Message* message );
 
-			void connectTo( Node* node, Queue_t* shared_queue = nullptr ) {
-				Queue_t* queue;
-				if(shared_queue != nullptr && checkSharedQueue( queue, output_queues )) {
-					queue = shared_queue;
-				} else {
-					queue = new Queue_t();
-					output_queues.push_back( queue );
-				}
+			void connectTo( Node* node, Queue_t* shared_queue = nullptr );
 
-				node->notifyConnection( queue, shared_queue != nullptr );
-				output_connections++;
-			}
+			Queue_t* getOutputQueue( int index );
 
-			void start() {
-				_thread = std::thread( &Node::run, this );
-			}
+			Queue_t* getInputQueue( int index );
 
-			void join() {
-				_thread.join();
-			}
+			void start();
 
-			virtual ~Node() {
-				input_queues.clear();
-				output_queues.clear();
-			}
+			void join();
+
+			virtual ~Node();
 
 
 		private:
 			virtual void run() = 0;
 
-			void notifyConnection( Queue_t* queue, bool shared ) {
-				// Insert the queue only if it is a brand new one.
-				if(!shared || !checkSharedQueue( queue, input_queues )) {
-					input_queues.push_back( queue );
-					input_connections++;
-				}
-			}
+			void notifyConnection( Queue_t* queue, bool shared );
 
-			bool checkSharedQueue( Queue_t* queue, vector<Queue_t*> queues ) {
-				for(Queue_t* q : queues) {
-					if(q->getId() == queue->getId()) {
-						return true;
-					}
-				}
-				return false;
-			}
+			bool checkSharedQueue( Queue_t* queue, vector<Queue_t*> queues );
 	};
 }
 

@@ -1,7 +1,5 @@
 #include <iostream>
 
-#include "Message.h"
-#include "Node.h"
 #include "Collector.h"
 
 using namespace std;
@@ -9,20 +7,18 @@ using namespace std;
 namespace iwm
 {
 	Collector::Collector( string folder ) {
-		this->outDir = folder /*+ string( "/" )*/;
+		this->outDir = folder;
 	}
 
 	void Collector::run()
 	{
 		cout << "[COLLECTOR]: PARTITO" << endl;
 
-		int workers = this->input_connections;
-		while(workers > 0) {
+		while(this->input_connections > 0) {
 			Message* message = receiveMessage( 0 );
 
 			if(message->getName().compare( "EXIT" ) == 0) {
-				workers--;
-				cout << "[COLLECTOR]: Ricevuta chiusura worker, workers rimasti = " << workers << endl;
+				this->input_connections--;
 			} else {
 				saveFile( outDir + message->getName(), message->getImage() );
 			}

@@ -21,8 +21,8 @@ namespace iwm {
 	class Queue_t {
 		private:
 			queue<Message*>* que;
-			mutex* mux;
-			condition_variable* cv;
+			mutex mux;
+			condition_variable cv;
 
 			long id;
 			static long nextId;

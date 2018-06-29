@@ -5,26 +5,28 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <boost/filesystem.hpp>
 
 #include "Message.h"
 #include "Node.h"
+#include "Timer.h"
 
 using namespace std;
+
 namespace iwm {
+
 	class Emitter : public Node {
 		private:
 			vector<Message*>* messages;
 			int iterations;
+			Timer* timer;
 
 		public:
-			Emitter( char* imagesDir, char* stampName, int iterations );
+			Emitter( char* imagesDir, int iterations, Timer* timer, vector<Message*>* messages );
 			virtual ~Emitter();
 
 			void run();
-
-			void findImages( string imagesDir );
 	};
+
 }
 
 #endif /* EMITTER_H_ */

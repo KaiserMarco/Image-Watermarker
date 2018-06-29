@@ -2,50 +2,40 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <boost/filesystem.hpp>
+#include <experimental/filesystem>
 
 #include "Emitter.h"
 
 using namespace std;
 using namespace cimg_library;
-using namespace boost::filesystem;
 
-namespace iwm
-{
-	Emitter::Emitter( char* imagesDir, char* stampName, int iterations ) {
+namespace fs = experimental::filesystem;
+
+namespace iwm {
+
+	Emitter::Emitter( char* imagesDir, int iterations, Timer* timer, vector<Message*>* messages ) {
 		this->iterations = iterations;
-		this->messages = new vector<Message*>();
-		findImages( imagesDir );
+		this->messages = messages;
+		this->timer = timer;
 	}
 
 	void Emitter::run() {
+		timer->startTime();
 		cout << "[EMITTER]: PARTITO" << endl;
 		int index = -1;
 		for(unsigned int i = 0; i < this->messages->size(); i++) {
 			index = (index + 1) % output_connections;
 
-			cout << "[EMITTER]: Invio mesaggio al worker: " << index << " ..." << endl;
+			cout << "[EMITTER]: Invio messaggio al worker: " << index << endl;
 			Message* message = this->messages->at( i );
 			sendMessage( message, index );
 			cout << "[EMITTER]: Messaggio inviato!" << endl;
 		}
 
 		Message* exitMessage = new Message( "EXIT" );
-		sendBroadcast( output_connections, exitMessage );
-	}
+		sendBroadcast( exitMessage );
 
-	void Emitter::findImages( string imagesDir ) {
-		for(int j = 0; j < iterations; j++) {
-			for(auto i = directory_iterator( imagesDir ); i != directory_iterator(); i++) {
-				if(!is_directory( i->path() )) {
-					string imageName = i->path().filename().string();
-					CImg<imageType> *image = new CImg<imageType>( ((string) imagesDir + "/" + imageName).c_str() );
-
-					Message* mex = new Message( image, imageName );
-					this->messages->push_back( mex );
-				}
-			}
-		}
+		cout << "[EMITTER]: TERMINATO" << endl;
 	}
 
 	Emitter::~Emitter() {

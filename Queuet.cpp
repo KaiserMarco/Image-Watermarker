@@ -13,8 +13,6 @@ namespace iwm {
 
 	Queue_t::Queue_t() {
 		this->que = new queue<Message*>();
-		this->mux = new mutex();
-		this->cv = new condition_variable();
 		this->id = generateId();
 	}
 
@@ -23,18 +21,18 @@ namespace iwm {
 	}
 
 	void Queue_t::sendMessage( Message* mex ) {
-		unique_lock<mutex> lockMessage( *mux );
+		unique_lock<mutex> lockMessage( mux );
 
 		que->push( mex );
-		cv->notify_one();
+		cv.notify_one();
 
 		lockMessage.unlock();
 	}
 
 	Message* Queue_t::receiveMessage() {
-		unique_lock<mutex> lockMessage( *mux );
+		unique_lock<mutex> lockMessage( mux );
 
-		cv->wait( lockMessage, [=]{ return !que->empty(); } );
+		cv.wait( lockMessage, [=]{ return !que->empty(); } );
 
 		Message* message = que->front();
 		que->pop();
@@ -49,9 +47,7 @@ namespace iwm {
 	}
 
 	Queue_t::~Queue_t() {
-		delete que;
-		delete mux;
-		delete cv;
+		delete[] que;
 	}
 
 } /* namespace iwm */

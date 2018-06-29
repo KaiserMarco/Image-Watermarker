@@ -11,16 +11,16 @@ namespace iwm {
 
 	Message::Message( CImg<imageType>* image, string name ) {
 		this->image = image;
-		this->name = name;
+		this->name  = name;
 	}
 
 	Message::Message( string name ) {
 		this->image = nullptr;
-		this->name = name;
+		this->name  = name;
 	}
 
 	Message::~Message() {
-		if (this->image != nullptr) {
+		if(this->image != nullptr) {
 			delete this->image;
 		}
 	}
@@ -31,6 +31,10 @@ namespace iwm {
 
 	string Message::getName() {
 		return name;
+	}
+
+	Message* Message::clone() {
+		return new Message( this->image, this->name );
 	}
 
 } /* namespace iwm */

@@ -30,8 +30,10 @@ namespace iwm {
 
 			if(mex->getName().compare( "EXIT" ) == 0) {
 				finish = true;
+				cout << "[WORKER " << index << "]: Invio chiusura worker al collector" << endl;
 			} else {
 				insertWatermark( mex->getImage() );
+				cout << "[WORKER " << index << "]: Invio immagine al collector" << endl;
 			}
 
 			// Send message to Collector.

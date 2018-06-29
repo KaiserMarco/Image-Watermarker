@@ -9,6 +9,7 @@
 #define MESSAGE_H_
 
 #include "CImg.h"
+
 #include <string>
 
 typedef unsigned char imageType;
@@ -30,6 +31,7 @@ namespace iwm {
 
 			CImg<imageType>* getImage();
 			string getName();
+			Message* clone();
 	};
 
 } /* namespace iwm */

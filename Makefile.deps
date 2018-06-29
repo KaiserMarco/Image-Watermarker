@@ -1,0 +1,7 @@
+Collector.o: Collector.h Message.h Node.h Queuet.h
+Emitter.o: Emitter.h Message.h Node.h Queuet.h Timer.h
+Message.o: Message.h
+Node.o: Node.h Queuet.h Message.h
+Queuet.o: Queuet.h Message.h
+Timer.o: Timer.h
+Worker.o: Worker.h Message.h Node.h Queuet.h
