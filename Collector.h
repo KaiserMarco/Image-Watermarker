@@ -3,15 +3,19 @@
 
 #include "Message.h"
 #include "Node.h"
+#include "Timer.h"
 
 namespace iwm
 {
 	class Collector : public Node {
 		private:
 			string outDir;
+			bool save;
+			vector<Message*>* messages;
+			Timer* time;
 
 		public:
-			Collector( string outDir );
+			Collector( string outDir, bool save, Timer* time );
 			virtual ~Collector();
 
 			void run();

@@ -17,14 +17,18 @@ namespace iwm {
 	class Emitter : public Node {
 		private:
 			vector<Message*>* messages;
-			int iterations;
+			int imageCopies;
 			Timer* timer;
+			bool stream;
+			int dimW, dimH;
+			char* imagesDir;
 
 		public:
-			Emitter( char* imagesDir, int iterations, Timer* timer, vector<Message*>* messages );
+			Emitter( char* imagesDir, int iterations, Timer* timer, vector<Message*>* messages, int dimW, int dimH, bool stream );
 			virtual ~Emitter();
 
 			void run();
+			void findImages( string imagesDir, bool stream, int dimW, int dimH );
 	};
 
 }

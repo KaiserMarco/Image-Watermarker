@@ -6,8 +6,13 @@ using namespace std;
 
 namespace iwm
 {
-	Collector::Collector( string folder ) {
+	Collector::Collector( string folder, bool save, Timer* time ) {
 		this->outDir = folder;
+		this->save = save;
+		this->time = time;
+		if(!save) {
+			this->messages = new vector<Message*>();
+		}
 	}
 
 	void Collector::run()
@@ -19,11 +24,21 @@ namespace iwm
 
 			if(message->getName().compare( "EXIT" ) == 0) {
 				this->input_connections--;
-			} else {
+			} else if(save) {
 				saveFile( outDir + message->getName(), message->getImage() );
+				delete message;
+			} else {
+				messages->push_back( message );
 			}
+		}
 
-			delete message;
+		if(!save) {
+			time->stopTime();
+			for(unsigned int i = 0; i < messages->size(); i++) {
+				Message* message = messages->at( i );
+				saveFile( outDir + message->getName(), message->getImage() );
+				delete message;
+			}
 		}
 
 		cout << "[COLLECTOR]: TERMINATO" << endl;
