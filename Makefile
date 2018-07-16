@@ -1,37 +1,34 @@
 CC = g++
-CFLAGS = -std=c++17 -Wall -pedantic -O3
-LFLAGS = -lstdc++fs -pthread -L/home/marco/Scrivania/CImg-2.2.3 -lX11
-OBJ = ImageWatermark.o Node.o Emitter.o Worker.o Collector.o Message.o Queuet.o Timer.o
-TARGET = imageWatermark
+CFLAGS = -std=c++11 -Wall -pedantic -O3 -c
+LFLAGS = -lstdc++fs -pthread -lX11
+OBJ = ImageWatermark.o Emitter.o Worker.o Collector.o Message.o Queuet.o Timer.o
+TARGET = imgWtr
 
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
-	$(CC) $(OBJ) -o imgWtr
+	$(CC) $(OBJ) -o $(TARGET) $(LFLAGS)
 
-ImageWatermark.o: ImageWatermark.cpp Emitter.h Worker.h Collector.h Queuet.h Timer.h
-	$(CC) $(CFLAGS) $(LFLAGS) ImageWatermark.cpp
+ImageWatermark.o: ImageWatermark.cpp Emitter.h Worker.h Collector.h Timer.h
+	$(CC) $(CFLAGS) ImageWatermark.cpp $(LFLAGS)
 
-Node.o: Node.cpp Node.h Queuet.h
-	$(CC) $(CFLAGS) $(LFLAGS) Node.cpp
+Emitter.o: Emitter.h Emitter.cpp Message.h Node.h Timer.h
+	$(CC) $(CFLAGS) Emitter.cpp $(LFLAGS)
 
-Emitter.o: Emitter.cpp Emitter.h Message.h Node.h Timer.h
-	$(CC) $(CFLAGS) $(LFLAGS) Emitter.cpp
+Worker.o: Worker.h Worker.cpp Node.h Message.h
+	$(CC) $(CFLAGS) Worker.cpp $(LFLAGS)
 
-Worker.o: Worker.cpp Worker.h Node.h Message.h
-	$(CC) $(CFLAGS) $(LFLAGS) Worker.cpp
+Collector.o: Collector.h Collector.cpp Node.h Message.h Timer.h
+	$(CC) $(CFLAGS) Collector.cpp $(LFLAGS)
 
-Collector.o: Collector.cpp Collector.h Node.h Message.h Timer.h
-	$(CC) $(CFLAGS) $(LFLAGS) Collector.cpp
+Queuet.o: Queuet.h Queuet.cpp Message.h
+	$(CC) $(CFLAGS) Queuet.cpp $(LFLAGS)
 
-Message.o: Message.cpp CImg.h Message.h
-	$(CC) $(CFLAGS) $(LFLAGS) Message.cpp
+Message.o: Message.h Message.cpp CImg.h
+	$(CC) $(CFLAGS) Message.cpp $(LFLAGS)
 
-Queuet.o: Queuet.cpp Queuet.h Message.h
-	$(CC) $(CFLAGS) $(LFLAGS) Queuet.cpp
-
-Timer.o: Timer.cpp Timer.h
-	$(CC) $(CFLAGS) $(LFLAGS) Timer.cpp
+Timer.o: Timer.h Timer.cpp
+	$(CC) $(CFLAGS) Timer.cpp $(LFLAGS)
 
 clean:
-	rm -rf *o app
+	rm -rf *o $(TARGET)
