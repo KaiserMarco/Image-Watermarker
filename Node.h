@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "CImg.h"
+
 #include "Queuet.h"
 
 using namespace std;

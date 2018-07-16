@@ -1,10 +1,3 @@
-/*
- * Message.cpp
- *
- *  Created on: 25 giu 2018
- *      Author: marco
- */
-
 #include "Message.h"
 
 namespace iwm {
@@ -14,15 +7,9 @@ namespace iwm {
 		this->name  = name;
 	}
 
-	Message::Message( string name ) {
+	Message::Message() {
 		this->image = nullptr;
-		this->name  = name;
-	}
-
-	Message::~Message() {
-		if(this->image != nullptr) {
-			delete this->image;
-		}
+		this->name  = EOS;
 	}
 
 	CImg<imageType>* Message::getImage() {
@@ -35,6 +22,12 @@ namespace iwm {
 
 	Message* Message::clone() {
 		return new Message( this->image, this->name );
+	}
+
+	Message::~Message() {
+		/*if(this->image != nullptr) {
+			delete this->image;
+		}*/
 	}
 
 } /* namespace iwm */

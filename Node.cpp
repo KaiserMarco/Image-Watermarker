@@ -1,7 +1,6 @@
+#include <iostream>
+
 #include "Node.h"
-
-#include <thread>
-
 
 using namespace std;
 
@@ -16,11 +15,11 @@ namespace iwm
 		return this->input_queues[index]->receiveMessage();
 	}
 
-	void Node::sendMessage(Message* message, int index) {
+	void Node::sendMessage( Message* message, int index ) {
 		this->output_queues[index]->sendMessage( message );
 	}
 
-	void Node::sendBroadcast(Message* message) {
+	void Node::sendBroadcast( Message* message ) {
 		for(int i = 0; i < this->output_connections; i++) {
 			sendMessage( message->clone(), i );
 		}

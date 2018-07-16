@@ -1,10 +1,3 @@
-/*
- * Timer.cpp
- *
- *  Created on: 27 giu 2018
- *      Author: marco
- */
-
 #include "Timer.h"
 
 namespace iwm {

@@ -1,10 +1,3 @@
-/*
- * Queuet.h
- *
- *  Created on: 25 giu 2018
- *      Author: marco
- */
-
 #ifndef QUEUET_H_
 #define QUEUET_H_
 

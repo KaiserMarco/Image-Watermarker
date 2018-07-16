@@ -1,10 +1,3 @@
-/*
- * Queuet.cpp
- *
- *  Created on: 25 giu 2018
- *      Author: marco
- */
-
 #include "Queuet.h"
 
 namespace iwm {

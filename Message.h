@@ -1,16 +1,11 @@
-/*
- * Message.h
- *
- *  Created on: 25 giu 2018
- *      Author: marco
- */
-
 #ifndef MESSAGE_H_
 #define MESSAGE_H_
 
+#include <string>
+
 #include "CImg.h"
 
-#include <string>
+#define EOS "END"
 
 typedef unsigned char imageType;
 
@@ -25,7 +20,7 @@ namespace iwm {
 			string name;
 
 		public:
-			Message( string name );
+			Message();
 			Message( CImg<imageType>* image, string name );
 			virtual ~Message();
 

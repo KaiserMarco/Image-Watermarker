@@ -1,10 +1,3 @@
-/*
- * Worker.cpp
- *
- *  Created on: 26 giu 2018
- *      Author: marco
- */
-
 #include <iostream>
 
 #include "Worker.h"
@@ -28,7 +21,7 @@ namespace iwm {
 			Message* mex = receiveMessage( 0 );
 			cout << "[WORKER " << index << "]: Ricevuto: " << mex->getName() << endl;
 
-			if(mex->getName().compare( "EXIT" ) == 0) {
+			if(mex->getName().compare( EOS ) == 0) {
 				finish = true;
 				cout << "[WORKER " << index << "]: Invio chiusura worker al collector" << endl;
 			} else {
@@ -46,7 +39,7 @@ namespace iwm {
 
 	void Worker::insertWatermark( CImg<imageType>* image ) {
 		CImg<imageType>::iterator itR, itG, itB, itS;
-		int color, offset = 0, numPixels = image->width() * image->height();
+		int color = 0, offset = 0, numPixels = image->width() * image->height();
 		for(itS = stamp->begin(); itS < stamp->end(); ++itS, ++offset) {
 			if(*itS == 0) {
 				itR = image->begin();
@@ -70,8 +63,6 @@ namespace iwm {
 		}
 	}
 
-	Worker::~Worker() {
-		delete stamp;
-	}
+	Worker::~Worker() {}
 
 } /* namespace iwm */

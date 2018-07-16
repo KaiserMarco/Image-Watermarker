@@ -1,8 +1,6 @@
 #ifndef EMITTER_H_
 #define EMITTER_H_
 
-#include <queue>
-#include <string>
 #include <vector>
 #include <iostream>
 
@@ -28,7 +26,7 @@ namespace iwm {
 			virtual ~Emitter();
 
 			void run();
-			void findImages( string imagesDir, bool stream, int dimW, int dimH );
+			void findImages( string imagesDir, int dimW, int dimH );
 	};
 
 }

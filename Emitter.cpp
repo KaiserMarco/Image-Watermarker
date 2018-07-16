@@ -26,7 +26,7 @@ namespace iwm {
 	void Emitter::run() {
 		cout << "[EMITTER]: PARTITO " << endl;
 		if(stream) {
-			findImages( imagesDir, stream, dimW, dimH );
+			findImages( imagesDir, dimW, dimH );
 		} else {
 			timer->startTime();
 			int index = -1;
@@ -40,31 +40,27 @@ namespace iwm {
 			}
 		}
 
-		Message* exitMessage = new Message( "EXIT" );
+		Message* exitMessage = new Message();
 		sendBroadcast( exitMessage );
 
 		cout << "[EMITTER]: TERMINATO" << endl;
 	}
 
-	void Emitter::findImages( string imagesDir, bool stream, int dimW, int dimH ) {
+	void Emitter::findImages( string imagesDir, int dimW, int dimH ) {
 		int index = -1;
-	    for(int j = 0; j < imageCopies; j++) {
-	    	for(auto & p : fs::directory_iterator( imagesDir )) {
-				if(!is_directory( p.path() )) {
-					string imageName = p.path().filename().string();
-					CImg<imageType> *image = new CImg<imageType>( ((string) imagesDir + "/" + imageName).c_str() );
-					image->resize( dimW, dimH );
+		for(auto & p : fs::directory_iterator( imagesDir )) {
+			if(!is_directory( p.path() ) && --imageCopies >= 0) {
+				string imageName = p.path().filename().string();
+				CImg<imageType> *image = new CImg<imageType>( ((string) imagesDir + "/" + imageName).c_str() );
+				image->resize( dimW, dimH );
 
-					Message* message = new Message( image, imageName );
-					index = (index + 1) % output_connections;
-					sendMessage( message, index );
-					cout << "[EMITTER]: Messaggio inviato!" << endl;
-				}
+				Message* message = new Message( image, imageName );
+				index = (index + 1) % output_connections;
+				sendMessage( message, index );
+				cout << "[EMITTER]: Messaggio inviato!" << endl;
 			}
-	    }
+		}
 	}
 
-	Emitter::~Emitter() {
-		//delete[] this->messages;
-	}
+	Emitter::~Emitter() {}
 }

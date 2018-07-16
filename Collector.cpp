@@ -10,9 +10,7 @@ namespace iwm
 		this->outDir = folder;
 		this->save = save;
 		this->time = time;
-		if(!save) {
-			this->messages = new vector<Message*>();
-		}
+		this->messages = new vector<Message*>();
 	}
 
 	void Collector::run()
@@ -22,7 +20,7 @@ namespace iwm
 		while(this->input_connections > 0) {
 			Message* message = receiveMessage( 0 );
 
-			if(message->getName().compare( "EXIT" ) == 0) {
+			if(message->getName().compare( EOS ) == 0) {
 				this->input_connections--;
 			} else if(save) {
 				saveFile( outDir + message->getName(), message->getImage() );
@@ -50,10 +48,12 @@ namespace iwm
 		copy( path.begin(), path.end(), directory );
 		directory[path.size()] = '\0';
 
-		image->save( directory );
+		//image->save( directory );
 
 		delete[] directory;
 	}
 
-	Collector::~Collector() {}
+	Collector::~Collector() {
+		//delete messages;
+	}
 }
