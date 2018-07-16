@@ -1,2 +1,6 @@
-src/*.o
+src/
 .project
+ImageResults/
+*.o
+*.h.gch
+StampImage/
