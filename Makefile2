@@ -1,0 +1,17 @@
+CC = g++
+CFLAGS = -std=c++11 -Wall -pedantic -O3 -c
+LFLAGS = -lstdc++fs -pthread -lX11
+OBJ = ImageWatermark.o Emitter.o Worker.o Collector.o Message.o Queuet.o Timer.o
+TARGET = imgWtr
+
+seq:
+	g++ -std=c++11 -Wall -pedantic -O3 -o seqImgWtr SeqImageWatermark.cpp Message.cpp Timer.cpp -lstdc++fs -pthread -lX11
+
+par:
+	g++ -std=c++11 -Wall -pedantic -O3 -o parImgWtr ImageWatermark.cpp Emitter.cpp Worker.cpp Collector.cpp Node.cpp Queuet.cpp Message.cpp Timer.cpp -lstdc++fs -pthread -lX11
+
+ff:
+	g++ -std=c++11 -Wall -DNO_DEFAULT_MAPPING -O3 -I $FF_HOME -faligned-new -o ffImgWtr FfImageWatermark.cpp Message_ff.cpp -lstdc++fs -pthread -lX11
+
+clean:
+	rm -rf *o app
