@@ -39,7 +39,7 @@ void insertWatermark( CImg<imageType>* stamp, CImg<imageType>* image ) {
 }
 
 void saveFile( string dir, Message* message ) {
-	string path = dir + message->getName();
+	string path = "../Results/" + dir + message->getName();
 	cout << "Saving: " << path << endl;
 	char* directory = new char[path.size() + 1];
 	copy( path.begin(), path.end(), directory );
@@ -66,7 +66,7 @@ int main( int argc, char* argv[] ) {
 	}
 
 	ofstream file;
-	file.open( "results_seq.txt", ios::app );
+	file.open( "../Results/results_seq.txt", ios::app );
 
 	if(!file.is_open()) {
 		return 0;
@@ -82,18 +82,7 @@ int main( int argc, char* argv[] ) {
 	char* stampName = argv[4];
 
 	bool stream; stringstream( argv[8] ) >> boolalpha >> stream;
-	bool save;  stringstream( argv[9] ) >> boolalpha >> save;
-
-	cout << "argv[0] = " << argv[0] << endl;
-	cout << "argv[1] = " << imagesDir << endl;
-	cout << "argv[2] = " << saveDir << endl;
-	cout << "argv[3] = " << stampDir << endl;
-	cout << "argv[4] = " << stampName << endl;
-	cout << "argv[5] = " << dimW << endl;
-	cout << "argv[6] = " << dimH << endl;
-	cout << "argv[7] = " << imageCopies << endl;
-	cout << "argv[8] = " << stream << endl;
-	cout << "argv[9] = " << save << endl;
+	bool save;   stringstream( argv[9] ) >> boolalpha >> save;
 
 	CImg<imageType>* stamp = NULL;
 
@@ -106,52 +95,46 @@ int main( int argc, char* argv[] ) {
 			string imageName = (string) stampDir + "/" + p.path().filename().string();
 			if(strcmp( p.path().filename().c_str(), stampName ) == 0) {
 				stamp = new CImg<imageType>( imageName.c_str() );
-				stamp->resize( dimW, dimH );
+				if(stamp->width() != dimW || stamp->height() != dimH) {
+					stamp->resize( dimW, dimH );
+				}
 			}
 		}
 	}
 
 	if(stream) {
 		time.startTime();
-		for(int i = 0; i < imageCopies; i++) {
-			for(auto & p : fs::directory_iterator( imagesDir )) {
-				if(!is_directory( p.path() )) {
-					string imageName = p.path().filename().string();
-					CImg<imageType> *image = new CImg<imageType>( ((string) imagesDir + "/" + imageName).c_str() );
+		for(auto & p : fs::directory_iterator( imagesDir )) {
+			if(!is_directory( p.path() ) && --imageCopies >= 0) {
+				string imageName = p.path().filename().string();
+				CImg<imageType> *image = new CImg<imageType>( ((string) imagesDir + "/" + imageName).c_str() );
+				if(image->width() != dimW || image->height() != dimH) {
 					image->resize( dimW, dimH );
+				}
 
-					Message* message = new Message( image, imageName );
-					messages.push_back( message );
+				Message* message = new Message( image, imageName );
+				messages.push_back( message );
 
-					insertWatermark( stamp, message->getImage() );
+				insertWatermark( stamp, message->getImage() );
 
-					if(save) {
-						saveFile( saveDir, message );
-						delete message;
-					}
-
-					break;
+				if(save) {
+					saveFile( saveDir, message );
+					delete message;
 				}
 			}
 		}
 	} else {
-		Message* message = NULL;
 		for(auto & p : fs::directory_iterator( imagesDir )) {
-			if(!is_directory( p.path() ) && imageCopies >= 0) {
+			if(!is_directory( p.path() ) && --imageCopies >= 0) {
 				string imageName = p.path().filename().string();
 				CImg<imageType> *image = new CImg<imageType>( ((string) imagesDir + "/" + imageName).c_str() );
-				image->resize( dimW, dimH );
+				if(image->width() != dimW || image->height() != dimH) {
+					image->resize( dimW, dimH );
+				}
 
-				message = new Message( image, imageName );
-				break;
-
-				//Message* mex = new Message( image, imageName );
-				//messages->push_back( mex );
+				Message* mex = new Message( image, imageName );
+				messages.push_back( mex );
 			}
-		}
-
-		for(int k = 0; k < imageCopies; k++) {
-			messages.push_back( message->clone() );
 		}
 
 		time.startTime();
@@ -177,6 +160,7 @@ int main( int argc, char* argv[] ) {
 		}
 	}
 
+	messages.clear();
 	delete stamp;
 
 	string streaming = stream ? " streaming parallel" : "out streaming parallel";

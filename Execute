@@ -5,9 +5,9 @@ if [ "$1" -gt 2 ] || [ "$#" -ne 7 ]; then
 	         1 -> launch par program
 	         2 -> launch ff program
 second parameter is the step to jump the number of workers
-third parameter is the number of images to process
-fourth parameter is the width of the images
-fifth parameter is the height of the images
+third parameter is the width of the images
+fourth parameter is the height of the images
+fifth parameter is the # of images
 sixth parameter is the flag to decide if stream or not the program
 seventh parameter is the flag to decide if take or not the saving time of the images"
 
@@ -15,17 +15,16 @@ seventh parameter is the flag to decide if take or not the saving time of the im
 fi
 
 if [ "$1" -eq 0 ]; then
-	./seqImgWtr ./Images ./ImageResults/ ./StampImage stampImage.jpg $3 $4 $5 $6 $7
+	./seqImgWtr ./Images ImageResults/ ./StampImage stampImage.jpg $3 $4 $5 $6 $7
 
 elif [ "$1" -eq 1 ]; then
-	echo $(nproc)
 	for (( i = 1 ; i <= $(nproc) ; i=i+$2 )) ; do 
-		./parImgWtr $i ./Images ./ImageResults/ ./StampImage stampImage.jpg $3 $4 $5 $6 $7
+		./parImgWtr $i ./Images ImageResults/ ./StampImage stampImage.jpg $3 $4 $5 $6 $7
 	done
-	
+
 elif [ "$1" -eq 2 ]; then
 	for (( i = 1 ; i <= $(nproc) ; i=i+$2 )) ; do
-		./ffImgWtr $i ./Images ./ImageResults/ ./StampImage stampImage.jpg $3 $4 $5 $6 $7
+		./ffImgWtr $i ./Images ImageResults/ ./StampImage stampImage.jpg $3 $4 $5 $6 $7
 	done
 fi
 
